@@ -1,0 +1,136 @@
+import 'package:flutter/material.dart';
+import '../engine/saju.dart';
+import '../engine/scoring.dart';
+import '../favorites.dart';
+import '../models.dart';
+import '../theme.dart';
+import '../widgets/common.dart';
+import 'detail_screen.dart';
+
+/// 보관함
+class FavoritesScreen extends StatefulWidget {
+  const FavoritesScreen({super.key});
+
+  @override
+  State<FavoritesScreen> createState() => _FavoritesScreenState();
+}
+
+class _FavoritesScreenState extends State<FavoritesScreen> {
+  List<FavoriteItem> _items = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final items = await loadFavorites();
+    if (mounted) {
+      setState(() {
+        _items = items;
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _open(FavoriteItem item) async {
+    final saju = computeSaju(item.baby);
+    final analysis = analyzeName(
+      surname: item.baby.surname,
+      surnameStrokes: item.baby.surnameStrokes,
+      picks: item.picks,
+      saju: saju,
+      gender: item.baby.gender,
+    );
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            DetailScreen(baby: item.baby, analysis: analysis),
+      ),
+    );
+    _load(); // 돌아오면 새로고침 (삭제 반영)
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('보관함')),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _items.isEmpty
+              ? const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.bookmark_border,
+                          size: 56, color: AppTheme.line),
+                      SizedBox(height: 12),
+                      Text('아직 저장한 이름이 없어요.',
+                          style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600)),
+                      SizedBox(height: 6),
+                      Text('마음에 드는 이름에서 북마크를 눌러 저장하세요.',
+                          style: TextStyle(
+                              fontSize: 13, color: AppTheme.sub)),
+                    ],
+                  ),
+                )
+              : ListView(
+                  padding: const EdgeInsets.all(20),
+                  children: _items.map((item) {
+                    return Card(
+                      margin:
+                          const EdgeInsets.symmetric(vertical: 6),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(20),
+                        onTap: () => _open(item),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(item.fullName,
+                                        style: const TextStyle(
+                                            fontSize: 19,
+                                            fontWeight:
+                                                FontWeight.w800)),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                        '${item.hanjaName} · ${item.baby.gender.label}',
+                                        style: const TextStyle(
+                                            fontSize: 13,
+                                            color: AppTheme.sub)),
+                                  ],
+                                ),
+                              ),
+                              ScoreRing(
+                                  score: item.total,
+                                  size: 56,
+                                  strokeWidth: 6),
+                              IconButton(
+                                icon: const Icon(
+                                    Icons.delete_outline,
+                                    color: AppTheme.sub),
+                                onPressed: () async {
+                                  await removeFavorite(item);
+                                  _load();
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+    );
+  }
+}
