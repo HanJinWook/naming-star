@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../data/hanja.dart';
 import '../data/hanja_full.dart';
+import '../engine/pure_korean.dart';
 import '../engine/saju.dart';
 import '../engine/scoring.dart';
 import '../models.dart';
@@ -42,6 +43,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
   DateTime _birth = DateTime(2026, 10, 19);
   TimeOfDay? _birthTime;
   bool _timeUnknown = true;
+  bool _isPureKorean = false;
   // 음절별 선택된 한자 인덱스
   final Map<int, int> _hanjaIdx = {};
 
@@ -65,21 +67,22 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
     final syls = _syllables;
     if (syls.length != 2) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('이름 2자를 입력해주세요. (예: 도윤)')),
+        SnackBar(
+            content: Text(_isPureKorean
+                ? '순우리말 이름 2자를 입력해주세요. (예: 하늘)'
+                : '이름 2자를 입력해주세요. (예: 도윤)')),
       );
       return;
     }
-    final picks = <HanjaPick>[];
-    for (var i = 0; i < 2; i++) {
-      final opts = orderedHanja(syls[i]);
-      if (opts.isEmpty) {
+    // 한글 음절 확인 (순우리말 모드)
+    if (_isPureKorean) {
+      final hangul = RegExp(r'^[가-힣]{2}$]');
+      if (!hangul.hasMatch(syls.join())) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('\'${syls[i]}\' 음절의 한자 데이터가 없어요. (순우리말 이름은 곧 지원 예정)')),
+          const SnackBar(content: Text('한글 2자로 입력해주세요.')),
         );
         return;
       }
-      final idx = (_hanjaIdx[i] ?? 0).clamp(0, opts.length - 1);
-      picks.add(opts[idx]);
     }
     final baby = BabyInfo(
       surname: _surnamePick.name,
@@ -91,13 +94,36 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
       birthMinute: _timeUnknown ? null : _birthTime?.minute,
     );
     final saju = computeSaju(baby);
-    final analysis = analyzeName(
-      surname: _surnamePick.name,
-      surnameStrokes: _surnamePick.strokes,
-      picks: picks,
-      saju: saju,
-      gender: _gender,
-    );
+    final NameAnalysis analysis;
+    if (_isPureKorean) {
+      analysis = analyzePureKoreanName(
+        surname: _surnamePick.name,
+        surnameStrokes: _surnamePick.strokes,
+        givenName: syls.join(),
+        saju: saju,
+        gender: _gender,
+      );
+    } else {
+      final picks = <HanjaPick>[];
+      for (var i = 0; i < 2; i++) {
+        final opts = orderedHanja(syls[i]);
+        if (opts.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('\'${syls[i]}\' 음절의 한자 데이터가 없어요.')),
+          );
+          return;
+        }
+        final idx = (_hanjaIdx[i] ?? 0).clamp(0, opts.length - 1);
+        picks.add(opts[idx]);
+      }
+      analysis = analyzeName(
+        surname: _surnamePick.name,
+        surnameStrokes: _surnamePick.strokes,
+        picks: picks,
+        saju: saju,
+        gender: _gender,
+      );
+    }
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -198,8 +224,10 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
                   TextField(
                     controller: _givenCtrl,
                     maxLength: 2,
-                    decoration: const InputDecoration(
-                        hintText: '이름 2자 (예: 도윤)',
+                    decoration: InputDecoration(
+                        hintText: _isPureKorean
+                            ? '순우리말 이름 2자 (예: 하늘)'
+                            : '이름 2자 (예: 도윤)',
                         counterText: ''),
                     style: const TextStyle(
                         fontSize: 18,
@@ -207,6 +235,33 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
                     onChanged: (_) =>
                         setState(() => _hanjaIdx.clear()),
                   ),
+                  const SizedBox(height: 12),
+                  // 이름 종류 선택
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment(
+                          value: false,
+                          label: Text('한자 이름'),
+                          icon: Icon(Icons.text_fields, size: 18)),
+                      ButtonSegment(
+                          value: true,
+                          label: Text('순우리말'),
+                          icon: Icon(Icons.grass_outlined, size: 18)),
+                    ],
+                    selected: {_isPureKorean},
+                    onSelectionChanged: (s) => setState(() {
+                      _isPureKorean = s.first;
+                      _hanjaIdx.clear();
+                    }),
+                  ),
+                  if (_isPureKorean) ...[
+                    const SizedBox(height: 8),
+                    const Text(
+                      '순우리말 이름은 한자 획수 대신 한글 자모 획수로 수리를 계산하고, 초성의 발음오행으로 사주를 보완하는 간이 분석이에요.',
+                      style:
+                          TextStyle(fontSize: 11, color: AppTheme.sub),
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   // 성별
                   Row(
@@ -232,8 +287,8 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
               ),
             ),
           ),
-          // 한자 선택
-          if (syls.length == 2)
+          // 한자 선택 (순우리말 모드에서는 숨김)
+          if (syls.length == 2 && !_isPureKorean)
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(18),

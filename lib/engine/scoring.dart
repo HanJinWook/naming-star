@@ -35,6 +35,7 @@ NameAnalysis analyzeName({
   required List<HanjaPick> picks, // 이름 2자
   required SajuResult saju,
   required Gender gender,
+  bool isPureKorean = false, // 순우리말 이름이면 true
 }) {
   assert(picks.length == 2);
   final warnings = <String>[];
@@ -158,14 +159,16 @@ NameAnalysis analyzeName({
   } else {
     var got = 0;
     for (final p in picks) {
+      final label =
+          isPureKorean ? '${p.syllable}(발음오행)' : '${p.char}(${p.meaning})';
       if (p.element == yongsin) {
         got += 45;
-        resourceDetails.add('${p.char}(${p.meaning}): 용신 ${elementNames[yongsin]} 보완 ✓');
+        resourceDetails.add('$label: 용신 ${elementNames[yongsin]} 보완 ✓');
       } else if (p.element == huishin) {
         got += 25;
-        resourceDetails.add('${p.char}(${p.meaning}): 희신 ${elementNames[huishin]} 보완 ✓');
+        resourceDetails.add('$label: 희신 ${elementNames[huishin]} 보완 ✓');
       } else {
-        resourceDetails.add('${p.char}(${p.meaning}): ${elementNames[p.element]}');
+        resourceDetails.add('$label: ${elementNames[p.element]}');
       }
     }
     resourceScore = got == 0 ? 30 : _clamp(got.toDouble());
@@ -229,8 +232,14 @@ NameAnalysis analyzeName({
     total: total,
     suri: DimensionScore(
       key: 'suri', title: '수리', score: suriScore, grade: suriGrade,
-      summary: '한자 획수의 길흉 (원격·형격·이격·정격)',
-      details: suriDetails,
+      summary: isPureKorean
+          ? '한글 자모 획수의 길흉 (원격·형격·이격·정격)'
+          : '한자 획수의 길흉 (원격·형격·이격·정격)',
+      details: [
+        if (isPureKorean)
+          '순우리말 이름은 한자 획수 대신 한글 자모 획수(통용 기준)로 계산한 간이 분석이에요.',
+        ...suriDetails,
+      ],
     ),
     yinyang: DimensionScore(
       key: 'yinyang', title: '음양', score: yyScore,

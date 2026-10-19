@@ -175,6 +175,7 @@ class NameAnalysis {
   String get givenName => picks.map((p) => p.syllable).join();
   String get fullName => '$surname$givenName';
   String get hanjaName => picks.map((p) => p.char).join();
+  bool get isPureKorean => picks.every((p) => p.char.isEmpty);
   List<DimensionScore> get dimensions =>
       [suri, resource, sound, yinyang, usability];
 }

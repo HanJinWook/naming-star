@@ -115,7 +115,10 @@ class _DetailScreenState extends State<DetailScreen> {
                                 fontWeight: FontWeight.w800,
                                 color: Colors.white)),
                         const SizedBox(height: 4),
-                        Text(a.hanjaName,
+                        Text(
+                            a.isPureKorean
+                                ? '순우리말 이름'
+                                : a.hanjaName,
                             style: const TextStyle(
                                 fontSize: 16,
                                 color: Colors.white70)),
@@ -133,7 +136,9 @@ class _DetailScreenState extends State<DetailScreen> {
                                     BorderRadius.circular(10),
                               ),
                               child: Text(
-                                  '${p.char} ${p.meaning}',
+                                  a.isPureKorean
+                                      ? '${p.syllable} (발음오행 ${elementNames[p.element]})'
+                                      : '${p.char} ${p.meaning}',
                                   style: const TextStyle(
                                       fontSize: 11,
                                       color: Colors.white)),
@@ -187,33 +192,34 @@ class _DetailScreenState extends State<DetailScreen> {
             ),
           ),
 
-          // 한자 바꾸기
-          SectionCard(
-            title: '한자 바꾸기',
-            icon: Icons.edit,
-            subtitle: '같은 발음의 다른 한자를 고르면 점수가 다시 계산돼요',
-            child: Column(
-              children: [
-                _HanjaPicker(
-                  index: 0,
-                  picks: _picks,
-                  onChanged: (p) {
-                    _picks[0] = p;
-                    _rescore();
-                  },
-                ),
-                const SizedBox(height: 10),
-                _HanjaPicker(
-                  index: 1,
-                  picks: _picks,
-                  onChanged: (p) {
-                    _picks[1] = p;
-                    _rescore();
-                  },
-                ),
-              ],
+          // 한자 바꾸기 (순우리말 이름은 숨김)
+          if (!a.isPureKorean)
+            SectionCard(
+              title: '한자 바꾸기',
+              icon: Icons.edit,
+              subtitle: '같은 발음의 다른 한자를 고르면 점수가 다시 계산돼요',
+              child: Column(
+                children: [
+                  _HanjaPicker(
+                    index: 0,
+                    picks: _picks,
+                    onChanged: (p) {
+                      _picks[0] = p;
+                      _rescore();
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  _HanjaPicker(
+                    index: 1,
+                    picks: _picks,
+                    onChanged: (p) {
+                      _picks[1] = p;
+                      _rescore();
+                    },
+                  ),
+                ],
+              ),
             ),
-          ),
 
           // 사주 분석
           SectionCard(
