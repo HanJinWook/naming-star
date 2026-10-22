@@ -20,6 +20,7 @@ class JakmyeongbyeolApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: '작명별',
+      debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
       locale: const Locale('ko'),
       localizationsDelegates: const [
