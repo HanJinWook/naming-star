@@ -5,18 +5,17 @@ import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 /// AdMob 광고 관리
-/// - 현재는 Google 공식 테스트 ID 사용 (실제 광고 아님)
-/// - 실제 수익화: AdMob(admob.google.com)에서 앱 등록 후
-///   아래 테스트 ID를 실제 광고 단위 ID로 교체
+/// - 디버그 빌드: Google 공식 테스트 ID 사용
+/// - 릴리즈(Android): 실제 광고 단위 ID (2026-10-22 AdMob 등록 완료)
+/// - 릴리즈(iOS): 실제 ID 미발급 상태라 테스트 ID 유지 (iOS 출시 시 교체)
 class AdService {
-  // TODO: AdMob에서 발급받은 실제 ID로 교체
   static String get bannerAdUnitId {
     if (kDebugMode) {
-      // 개발 중에는 항상 테스트 ID 사용
       return _testBannerId;
     }
-    // 릴리즈용 실제 ID (AdMob에서 발급 후 입력)
-    // return 'ca-app-pub-xxxxxxxxxxxxxxxx/yyyyyyyyyy';
+    if (Platform.isAndroid) {
+      return 'ca-app-pub-2198921607879570/5516707015';
+    }
     return _testBannerId;
   }
 
