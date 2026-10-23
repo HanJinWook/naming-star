@@ -91,7 +91,8 @@ class _RankingScreenState extends State<RankingScreen>
           // 하단 배너 광고 (남아/여아 탭 공통)
           const SafeArea(
             top: false,
-            child: Center(child: BannerAdWidget()),
+            child: Center(
+                child: BannerAdWidget(placement: AdPlacement.ranking)),
           ),
         ],
       ),
