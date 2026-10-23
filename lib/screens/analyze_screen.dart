@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import '../data/hanja.dart';
 import '../data/hanja_full.dart';
+import '../engine/compat.dart';
 import '../engine/pure_korean.dart';
 import '../engine/saju.dart';
 import '../engine/scoring.dart';
+import '../favorites.dart';
 import '../models.dart';
 import '../services/ad_service.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/surname_picker.dart';
+import 'compat_screen.dart';
 import 'detail_screen.dart';
 
 /// 음절의 전체 한자를 curated 우선으로 정렬
@@ -47,6 +50,16 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
   bool _isPureKorean = false;
   // 음절별 선택된 한자 인덱스
   final Map<int, int> _hanjaIdx = {};
+  // 가족 궁합 모드
+  bool _compatMode = false;
+  static const _roleOptions = [
+    '아빠', '엄마', '형', '오빠', '누나', '언니', '동생', '할아버지', '할머니'
+  ];
+  static const _maxMembers = 6;
+  final List<_MemberInput> _members = [
+    _MemberInput('아빠', DateTime(1990, 5, 5)),
+    _MemberInput('엄마', DateTime(1992, 7, 7)),
+  ];
 
   @override
   void dispose() {
@@ -59,6 +72,108 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
     if (pick != null) {
       setState(() => _surnamePick = pick);
     }
+  }
+
+  /// 보관함에서 이름을 골라 입력 폼 전체를 채워요
+  Future<void> _loadFromFavorites() async {
+    final items = await loadFavorites();
+    if (!mounted) return;
+    if (items.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('보관함이 비어 있어요. 이름 짓기에서 마음에 드는 이름을 보관해보세요.')),
+      );
+      return;
+    }
+    final picked = await showModalBottomSheet<FavoriteItem>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 18, 20, 6),
+                child: Text('보관함에서 불러오기',
+                    style: TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w800)),
+              ),
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
+                child: Text('고르면 성씨·한자·생년월일까지 그대로 채워져요.',
+                    style: TextStyle(fontSize: 12, color: AppTheme.sub)),
+              ),
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(ctx).size.height * 0.45),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: items.length,
+                  separatorBuilder: (_, __) =>
+                      const Divider(height: 1, indent: 20, endIndent: 20),
+                  itemBuilder: (_, i) {
+                    final item = items[i];
+                    final b = item.baby;
+                    return ListTile(
+                      title: Text(
+                        item.hanjaName.isEmpty
+                            ? item.fullName
+                            : '${item.fullName} (${item.hanjaName})',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      subtitle: Text(
+                          '종합 ${item.total.toStringAsFixed(0)}점 · ${b.birth.year}년 ${b.birth.month}월 ${b.birth.day}일생'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.pop(ctx, item),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (picked == null) return;
+    _applyFavorite(picked);
+  }
+
+  void _applyFavorite(FavoriteItem item) {
+    final baby = item.baby;
+    setState(() {
+      _surnamePick = SurnamePick(
+        name: baby.surname,
+        hanja: baby.surnameHanja,
+        strokes: baby.surnameStrokes,
+      );
+      _givenCtrl.text = item.picks.map((p) => p.syllable).join();
+      _isPureKorean = item.picks.every((p) => p.char.isEmpty);
+      _hanjaIdx.clear();
+      if (!_isPureKorean) {
+        for (var i = 0; i < item.picks.length && i < 2; i++) {
+          final opts = orderedHanja(item.picks[i].syllable);
+          final idx = opts.indexWhere((o) => o.char == item.picks[i].char);
+          if (idx >= 0) _hanjaIdx[i] = idx;
+        }
+      }
+      _gender = baby.gender;
+      _birth = baby.birth;
+      _timeUnknown = baby.birthHour == null;
+      _birthTime = baby.birthHour == null
+          ? null
+          : TimeOfDay(
+              hour: baby.birthHour!, minute: baby.birthMinute ?? 0);
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('보관함에서 ${item.fullName}을(를) 불러왔어요.')),
+    );
   }
 
   List<String> get _syllables =>
@@ -157,6 +272,220 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
     }
   }
 
+  // ── 가족 궁합 ──
+
+  Future<void> _pickDateValue(
+      DateTime initial, ValueChanged<DateTime> apply) async {
+    final d = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(1900, 1, 1),
+      lastDate: DateTime(2035),
+      locale: const Locale('ko'),
+    );
+    if (d != null) setState(() => apply(d));
+  }
+
+  Future<void> _pickTimeValue(
+      TimeOfDay? current, ValueChanged<TimeOfDay> apply) async {
+    final t = await showTimePicker(
+      context: context,
+      initialTime: current ?? const TimeOfDay(hour: 12, minute: 0),
+    );
+    if (t != null) setState(() => apply(t));
+  }
+
+  /// 이름 2자 + 한자 선택을 검증하고 picks를 만들어요. 실패하면 null.
+  List<HanjaPick>? _buildPicks() {
+    final syls = _syllables;
+    if (syls.length != 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(_isPureKorean
+                ? '순우리말 이름 2자를 입력해주세요. (예: 하늘)'
+                : '이름 2자를 입력해주세요. (예: 도윤)')),
+      );
+      return null;
+    }
+    if (_isPureKorean) {
+      if (!RegExp(r'^[가-힣]{2}$').hasMatch(syls.join())) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('한글 2자로 입력해주세요.')),
+        );
+        return null;
+      }
+      return pureKoreanPicks(syls.join());
+    }
+    final picks = <HanjaPick>[];
+    for (var i = 0; i < 2; i++) {
+      final opts = orderedHanja(syls[i]);
+      if (opts.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('\'${syls[i]}\' 음절의 한자 데이터가 없어요.')),
+        );
+        return null;
+      }
+      picks.add(opts[(_hanjaIdx[i] ?? 0).clamp(0, opts.length - 1)]);
+    }
+    return picks;
+  }
+
+  void _analyzeCompat() {
+    final picks = _buildPicks();
+    if (picks == null) return;
+    final baby = BabyInfo(
+      surname: _surnamePick.name,
+      surnameHanja: _surnamePick.hanja,
+      surnameStrokes: _surnamePick.strokes,
+      gender: _gender,
+      birth: _birth,
+      birthHour: _timeUnknown ? null : _birthTime?.hour,
+      birthMinute: _timeUnknown ? null : _birthTime?.minute,
+    );
+    final result = computeFamilyCompat(
+      members: [
+        for (final m in _members)
+          (
+            label: m.role,
+            saju: sajuOfBirth(
+                m.birth, m.timeUnknown ? null : m.time?.hour),
+          ),
+      ],
+      babySaju: computeSaju(baby),
+      picks: picks,
+    );
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CompatScreen(
+          babyFullName: '${_surnamePick.name}${picks.map((p) => p.syllable).join()}',
+          babyHanjaName:
+              _isPureKorean ? '' : picks.map((p) => p.char).join(),
+          isPureKorean: _isPureKorean,
+          result: result,
+        ),
+      ),
+    );
+  }
+
+  /// 같은 역할이 겹치면 '형 2'처럼 번호를 붙여 구분해요
+  String _uniqueLabel(String base, int selfIndex) {
+    var n = 0;
+    for (var i = 0; i < _members.length; i++) {
+      if (i == selfIndex) continue;
+      final r = _members[i].role;
+      if (r == base || r.startsWith('$base ')) n++;
+    }
+    return n == 0 ? base : '$base ${n + 1}';
+  }
+
+  void _addMember() {
+    if (_members.length >= _maxMembers) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('구성원은 최대 6명까지 추가할 수 있어요.')),
+      );
+      return;
+    }
+    final used = _members.map((m) => m.role.split(' ').first).toSet();
+    final base = _roleOptions.firstWhere((r) => !used.contains(r),
+        orElse: () => '동생');
+    final isElder = ['아빠', '엄마', '할아버지', '할머니'].contains(base);
+    final isGrand = ['할아버지', '할머니'].contains(base);
+    setState(() {
+      _members.add(_MemberInput(
+        _uniqueLabel(base, -1),
+        isGrand
+            ? DateTime(1955, 1, 1)
+            : isElder
+                ? DateTime(1990, 5, 5)
+                : DateTime(2021, 3, 5),
+      ));
+    });
+  }
+
+  /// 가족 구성원 입력 카드 (궁합 모드) — 역할 선택 + 생년월일
+  Widget _memberCard(int index) {
+    final m = _members[index];
+    final baseRole = m.role.split(' ').first;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(m.role,
+                    style: const TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.w700)),
+                const Spacer(),
+                if (_members.length > 1)
+                  IconButton(
+                    onPressed: () =>
+                        setState(() => _members.removeAt(index)),
+                    icon: const Icon(Icons.remove_circle_outline,
+                        size: 20, color: AppTheme.sub),
+                    tooltip: '구성원 삭제',
+                    visualDensity: VisualDensity.compact,
+                  ),
+              ],
+            ),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final r in _roleOptions)
+                  ChoiceChip(
+                    label: Text(r, style: const TextStyle(fontSize: 12)),
+                    selected: baseRole == r,
+                    onSelected: (_) => setState(
+                        () => m.role = _uniqueLabel(r, index)),
+                    selectedColor: AppTheme.primarySoft,
+                    visualDensity: VisualDensity.compact,
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading:
+                  const Icon(Icons.cake_outlined, color: AppTheme.primary),
+              title: Text(
+                  '${m.birth.year}년 ${m.birth.month}월 ${m.birth.day}일',
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () =>
+                  _pickDateValue(m.birth, (d) => m.birth = d),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading:
+                  const Icon(Icons.schedule, color: AppTheme.primary),
+              title: Text(
+                  '태어난 시간 · ${m.timeUnknown ? '모름' : (m.time == null ? '선택 안 함' : '${m.time!.hour}시 ${m.time!.minute}분')}',
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _pickTimeValue(m.time, (t) {
+                m.time = t;
+                m.timeUnknown = false;
+              }),
+            ),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              title: const Text('태어난 시간을 몰라요',
+                  style: TextStyle(fontSize: 13)),
+              value: m.timeUnknown,
+              onChanged: (v) =>
+                  setState(() => m.timeUnknown = v ?? false),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final syls = _syllables;
@@ -167,16 +496,68 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
         padding: EdgeInsets.fromLTRB(
             20, 20, 20, 20 + MediaQuery.of(context).padding.bottom),
         children: [
+          // 모드 전환: 이름 분석 / 가족 궁합
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment(
+                          value: false,
+                          label: Text('이름 분석'),
+                          icon: Icon(Icons.analytics_outlined, size: 18)),
+                      ButtonSegment(
+                          value: true,
+                          label: Text('가족 궁합'),
+                          icon: Icon(Icons.family_restroom_outlined,
+                              size: 18)),
+                    ],
+                    selected: {_compatMode},
+                    onSelectionChanged: (s) =>
+                        setState(() => _compatMode = s.first),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _compatMode
+                        ? '아빠·엄마의 사주와 아기 이름이 얼마나 잘 맞는지 봐요. 부모 정보는 한 번만 넣으면 이름만 바꿔 비교할 수 있어요.'
+                        : '이미 정한 이름을 5개 차원으로 분석해요.',
+                    style:
+                        const TextStyle(fontSize: 11, color: AppTheme.sub),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('분석할 이름',
-                      style:
-                          TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Text('분석할 이름',
+                          style: TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w700)),
+                      const Spacer(),
+                      TextButton.icon(
+                        onPressed: _loadFromFavorites,
+                        icon: const Icon(Icons.bookmark_outline, size: 16),
+                        label: const Text('보관함에서 불러오기'),
+                        style: TextButton.styleFrom(
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 8),
+                          textStyle: const TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
                   // 성씨 선택기
                   InkWell(
                     borderRadius: BorderRadius.circular(14),
@@ -268,7 +649,8 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
             ),
           ),
           const SizedBox(height: 4),
-          // 성별
+          // 성별 (궁합 모드에서는 불필요해서 숨김)
+          if (!_compatMode)
           Card(
             child: Padding(
               padding: const EdgeInsets.all(18),
@@ -376,8 +758,8 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('생년월일시',
-                      style: TextStyle(
+                  Text(_compatMode ? '아기 생년월일시' : '생년월일시',
+                      style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700)),
                   const SizedBox(height: 10),
@@ -427,15 +809,30 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
               ),
             ),
           ),
+          // 가족 구성원 (궁합 모드)
+          if (_compatMode) ...[
+            for (var i = 0; i < _members.length; i++) ...[
+              _memberCard(i),
+              const SizedBox(height: 4),
+            ],
+            OutlinedButton.icon(
+              onPressed: _addMember,
+              icon: const Icon(Icons.person_add_outlined, size: 18),
+              label: const Text('가족 구성원 추가 (최대 6명)'),
+            ),
+            const SizedBox(height: 4),
+          ],
           const SizedBox(height: 12),
           ElevatedButton(
-            onPressed: _analyze,
-            child: const Text('이 이름 분석하기'),
+            onPressed: _compatMode ? _analyzeCompat : _analyze,
+            child: Text(_compatMode ? '가족 궁합 보기' : '이 이름 분석하기'),
           ),
           const SizedBox(height: 12),
-          const Text(
-            '수리·음양·발음·사주 보완·사용성 5개 차원으로 점수화해 드려요.',
-            style: TextStyle(fontSize: 11, color: AppTheme.sub),
+          Text(
+            _compatMode
+                ? '가족 구성원 사주의 오행 보완·용신 조화·띠 궁합으로 점수화해 드려요.'
+                : '수리·음양·발음·사주 보완·사용성 5개 차원으로 점수화해 드려요.',
+            style: const TextStyle(fontSize: 11, color: AppTheme.sub),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
@@ -447,4 +844,13 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
       ),
     );
   }
+}
+
+/// 가족 궁합 구성원 입력 상태
+class _MemberInput {
+  String role;
+  DateTime birth;
+  TimeOfDay? time;
+  bool timeUnknown = true;
+  _MemberInput(this.role, this.birth);
 }

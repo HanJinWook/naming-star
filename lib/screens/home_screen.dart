@@ -6,6 +6,7 @@ import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/surname_picker.dart';
 import 'recommend_screen.dart';
+import 'reveal_screen.dart';
 
 /// 홈 — 아기 정보 입력
 class HomeScreen extends StatefulWidget {
@@ -66,11 +67,15 @@ class _HomeScreenState extends State<HomeScreen> {
       birthMinute: _timeUnknown ? null : _birthTime?.minute,
     );
     final saju = computeSaju(baby);
+    // 결과를 바로 보여주지 않고 별 애니메이션으로 기대감을 준 뒤 공개
+    // (출시 후 전면 광고는 RevealScreen 자리에 붙일 예정)
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => RecommendScreen(
-            baby: baby, saju: saju, isPureKorean: _isPureKorean),
+        builder: (_) => RevealScreen(
+          nextBuilder: (_) => RecommendScreen(
+              baby: baby, saju: saju, isPureKorean: _isPureKorean),
+        ),
       ),
     );
   }
