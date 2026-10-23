@@ -92,23 +92,13 @@ class _HomeScreenState extends State<HomeScreen> {
             // 헤더
             Row(
               children: [
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [AppTheme.primary, Color(0xFF6C5FC7)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Center(
-                    child: Text('별',
-                        style: TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white)),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.asset(
+                    'assets/icon/app-icon-1024.png',
+                    width: 52,
+                    height: 52,
+                    fit: BoxFit.cover,
                   ),
                 ),
                 const SizedBox(width: 14),
