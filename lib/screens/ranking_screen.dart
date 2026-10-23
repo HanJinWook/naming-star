@@ -14,6 +14,7 @@ class RankingScreen extends StatefulWidget {
 class _RankingScreenState extends State<RankingScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tab;
+  int _year = latestRankingYear;
 
   @override
   void initState() {
@@ -45,12 +46,45 @@ class _RankingScreenState extends State<RankingScreen>
       ),
       body: Column(
         children: [
+          // 연도 선택
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+            child: Row(
+              children: [
+                const Text('연도별 순위',
+                    style: TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.sub,
+                        fontWeight: FontWeight.w600)),
+                const Spacer(),
+                DropdownButton<int>(
+                  value: _year,
+                  underline: const SizedBox(),
+                  style: const TextStyle(
+                      fontSize: 14,
+                      color: AppTheme.ink,
+                      fontWeight: FontWeight.w700),
+                  items: rankingYears
+                      .map(
+                          (y) => DropdownMenuItem(value: y, child: Text('$y년')))
+                      .toList(),
+                  onChanged: (v) => setState(() => _year = v!),
+                ),
+              ],
+            ),
+          ),
           Expanded(
             child: TabBarView(
               controller: _tab,
-              children: const [
-                _RankList(entries: boyRanking2024, isBoy: true),
-                _RankList(entries: girlRanking2024, isBoy: false),
+              children: [
+                _RankList(
+                    entries: rankingsByYear[_year]!.boy,
+                    isBoy: true,
+                    year: _year),
+                _RankList(
+                    entries: rankingsByYear[_year]!.girl,
+                    isBoy: false,
+                    year: _year),
               ],
             ),
           ),
@@ -68,7 +102,9 @@ class _RankingScreenState extends State<RankingScreen>
 class _RankList extends StatelessWidget {
   final List<RankEntry> entries;
   final bool isBoy;
-  const _RankList({required this.entries, required this.isBoy});
+  final int year;
+  const _RankList(
+      {required this.entries, required this.isBoy, required this.year});
 
   @override
   Widget build(BuildContext context) {
@@ -78,32 +114,30 @@ class _RankList extends StatelessWidget {
       padding: EdgeInsets.fromLTRB(
           20, 20, 20, 20 + MediaQuery.of(context).padding.bottom),
       children: [
-        // 트렌드 카드
+        // 트렌드 카드 (성별별로 데이터에서 자동 생성)
         Card(
           color: isBoy ? AppTheme.boy : AppTheme.girl,
-          child: const Padding(
-            padding: EdgeInsets.all(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Icon(Icons.trending_up,
+                    const Icon(Icons.trending_up,
                         color: Colors.white, size: 20),
-                    SizedBox(width: 6),
-                    Text('2025 최근 트렌드',
-                        style: TextStyle(
+                    const SizedBox(width: 6),
+                    Text('$year년 ${isBoy ? '남아' : '여아'} 트렌드',
+                        style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
                             color: Colors.white)),
                   ],
                 ),
-                SizedBox(height: 8),
-                Text(trend2025,
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white,
-                        height: 1.6)),
+                const SizedBox(height: 8),
+                Text(trendLines(year, boy: isBoy).join(' '),
+                    style: const TextStyle(
+                        fontSize: 12, color: Colors.white, height: 1.6)),
               ],
             ),
           ),
@@ -120,9 +154,7 @@ class _RankList extends StatelessWidget {
                       style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
-                          color: e.rank <= 3
-                              ? AppTheme.gold
-                              : AppTheme.sub)),
+                          color: e.rank <= 3 ? AppTheme.gold : AppTheme.sub)),
                 ),
                 Expanded(
                   child: Column(
@@ -132,13 +164,11 @@ class _RankList extends StatelessWidget {
                         children: [
                           Text(e.name,
                               style: const TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w700)),
+                                  fontSize: 17, fontWeight: FontWeight.w700)),
                           const SizedBox(width: 8),
                           Text('${e.count}명',
                               style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppTheme.sub)),
+                                  fontSize: 12, color: AppTheme.sub)),
                         ],
                       ),
                       const SizedBox(height: 5),
@@ -166,13 +196,12 @@ class _RankList extends StatelessWidget {
             color: AppTheme.primarySoft,
             borderRadius: BorderRadius.circular(14),
           ),
-          child: const Column(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              const Row(
                 children: [
-                  Icon(Icons.info_outline,
-                      size: 16, color: AppTheme.primary),
+                  Icon(Icons.info_outline, size: 16, color: AppTheme.primary),
                   SizedBox(width: 6),
                   Text('랭킹 읽는 법',
                       style: TextStyle(
@@ -181,12 +210,14 @@ class _RankList extends StatelessWidget {
                           color: AppTheme.primary)),
                 ],
               ),
-              SizedBox(height: 6),
+              const SizedBox(height: 6),
               Text(
-                '· 출처: $rankingSource\n'
+                '· 출처: ${rankingSourceFor(year)}\n'
+                '· 건수는 집계 시점에 따라 발표 수치와 조금 다를 수 있어요.\n'
                 '· TOP 20에 든 이름은 또래에 같은 이름이 많을 수 있어요. '
                 '작명별 추천에서는 이런 이름에 사용성 점수 조정이 들어갑니다.',
-                style: TextStyle(fontSize: 12, color: AppTheme.sub, height: 1.6),
+                style: const TextStyle(
+                    fontSize: 12, color: AppTheme.sub, height: 1.6),
               ),
             ],
           ),
