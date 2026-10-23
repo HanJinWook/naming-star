@@ -530,10 +530,13 @@ List<String> trendLines(int year, {required bool boy}) {
   // 전년 TOP 20에 없던 신규 진입
   final newcomers = cur.where((e) => !prevRank.containsKey(e.name)).toList();
   if (newcomers.isNotEmpty) {
-    final names = newcomers.take(3).map((e) => e.name).join('·');
-    final suffix = newcomers.length > 3 ? ' 등' : '';
-    lines.add(
-        '전년 TOP 20 밖이던 $names$suffix${_iga(newcomers.first.name)} 새로 진입했어요.');
+    final shown = newcomers.take(3).toList();
+    final names = shown.map((e) => e.name).join('·');
+    final hasMore = newcomers.length > 3;
+    final suffix = hasMore ? ' 등' : '';
+    // 조사는 마지막으로 말하는 이름(또는 '등')의 받침을 따라요.
+    final particle = hasMore ? '이' : _iga(shown.last.name);
+    lines.add('전년 TOP 20 밖이던 $names$suffix$particle 새로 진입했어요.');
   }
 
   // 가장 많이 오른 이름
