@@ -76,7 +76,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
     }
     // 한글 음절 확인 (순우리말 모드)
     if (_isPureKorean) {
-      final hangul = RegExp(r'^[가-힣]{2}$]');
+      final hangul = RegExp(r'^[가-힣]{2}$');
       if (!hangul.hasMatch(syls.join())) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('한글 2자로 입력해주세요.')),
