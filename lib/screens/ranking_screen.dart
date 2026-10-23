@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../data/rankings.dart';
+import '../services/ad_service.dart';
 import '../theme.dart';
 
 /// 아기 이름 랭킹
@@ -42,11 +43,22 @@ class _RankingScreenState extends State<RankingScreen>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tab,
-        children: const [
-          _RankList(entries: boyRanking2024, isBoy: true),
-          _RankList(entries: girlRanking2024, isBoy: false),
+      body: Column(
+        children: [
+          Expanded(
+            child: TabBarView(
+              controller: _tab,
+              children: const [
+                _RankList(entries: boyRanking2024, isBoy: true),
+                _RankList(entries: girlRanking2024, isBoy: false),
+              ],
+            ),
+          ),
+          // 하단 배너 광고 (남아/여아 탭 공통)
+          const SafeArea(
+            top: false,
+            child: Center(child: BannerAdWidget()),
+          ),
         ],
       ),
     );

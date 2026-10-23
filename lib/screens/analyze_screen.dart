@@ -5,6 +5,7 @@ import '../engine/pure_korean.dart';
 import '../engine/saju.dart';
 import '../engine/scoring.dart';
 import '../models.dart';
+import '../services/ad_service.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 import '../widgets/surname_picker.dart';
@@ -437,6 +438,10 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
             style: TextStyle(fontSize: 11, color: AppTheme.sub),
             textAlign: TextAlign.center,
           ),
+          const SizedBox(height: 12),
+          // 하단 배너 광고
+          const Center(child: BannerAdWidget()),
+          const SizedBox(height: 12),
         ],
       ),
     );
