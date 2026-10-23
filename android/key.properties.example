@@ -1,6 +1,0 @@
-# 이 파일을 android/key.properties 로 복사한 뒤 값을 채우세요.
-# key.properties는 비밀번호가 들어 있어 Git에 올리지 않습니다 (.gitignore 처리됨).
-storePassword=키스토어 만들 때 정한 비밀번호
-keyPassword=키스토어 만들 때 정한 비밀번호
-keyAlias=upload
-storeFile=/Users/본인맥계정/jakmyeongbyeol-upload.jks
