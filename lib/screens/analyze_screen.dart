@@ -440,7 +440,8 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
           ),
           const SizedBox(height: 12),
           // 하단 배너 광고
-          const Center(child: BannerAdWidget()),
+          const Center(
+              child: BannerAdWidget(placement: AdPlacement.analyze)),
           const SizedBox(height: 12),
         ],
       ),

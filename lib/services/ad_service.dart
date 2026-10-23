@@ -8,13 +8,25 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 /// - 디버그 빌드: Google 공식 테스트 ID 사용
 /// - 릴리즈(Android): 실제 광고 단위 ID (2026-10-22 AdMob 등록 완료)
 /// - 릴리즈(iOS): 실제 ID 미발급 상태라 테스트 ID 유지 (iOS 출시 시 교체)
+/// 배너가 표시되는 화면 위치 (화면별 광고 단위 분리용)
+enum AdPlacement { home, analyze, ranking }
+
 class AdService {
-  static String get bannerAdUnitId {
+  static String get bannerAdUnitId => bannerAdUnitIdFor(AdPlacement.home);
+
+  static String bannerAdUnitIdFor(AdPlacement placement) {
     if (kDebugMode) {
       return _testBannerId;
     }
     if (Platform.isAndroid) {
-      return 'ca-app-pub-2198921607879570/5516707015';
+      switch (placement) {
+        case AdPlacement.analyze:
+          return 'ca-app-pub-2198921607879570/9461880362';
+        case AdPlacement.ranking:
+          return 'ca-app-pub-2198921607879570/2623467280';
+        case AdPlacement.home:
+          return 'ca-app-pub-2198921607879570/5516707015';
+      }
     }
     return _testBannerId;
   }
@@ -36,7 +48,9 @@ class AdService {
 
 /// 하단 배너 광고 위젯
 class BannerAdWidget extends StatefulWidget {
-  const BannerAdWidget({super.key});
+  const BannerAdWidget({super.key, this.placement = AdPlacement.home});
+
+  final AdPlacement placement;
 
   @override
   State<BannerAdWidget> createState() => _BannerAdWidgetState();
@@ -53,7 +67,7 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
   }
 
   void _loadAd() {
-    final adUnitId = AdService.bannerAdUnitId;
+    final adUnitId = AdService.bannerAdUnitIdFor(widget.placement);
     if (adUnitId.isEmpty) return;
     _bannerAd = BannerAd(
       adUnitId: adUnitId,
