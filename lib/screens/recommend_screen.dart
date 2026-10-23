@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../data/pure_korean_names.dart';
 import '../engine/generator.dart';
 import '../engine/saju.dart';
 import '../models.dart';
@@ -11,8 +12,12 @@ import 'detail_screen.dart';
 class RecommendScreen extends StatefulWidget {
   final BabyInfo baby;
   final SajuResult saju;
+  final bool isPureKorean;
   const RecommendScreen(
-      {super.key, required this.baby, required this.saju});
+      {super.key,
+      required this.baby,
+      required this.saju,
+      this.isPureKorean = false});
 
   @override
   State<RecommendScreen> createState() => _RecommendScreenState();
@@ -25,7 +30,9 @@ class _RecommendScreenState extends State<RecommendScreen> {
   @override
   void initState() {
     super.initState();
-    _names = generateNames(widget.baby, widget.saju);
+    _names = widget.isPureKorean
+        ? generatePureKoreanNames(widget.baby, widget.saju)
+        : generateNames(widget.baby, widget.saju);
   }
 
   List<NameAnalysis> get _sorted {
@@ -94,7 +101,9 @@ class _RecommendScreenState extends State<RecommendScreen> {
                   const SizedBox(height: 10),
                   Text(
                     saju.yongsin != null
-                        ? '사주에 ${elementNames[saju.yongsin]} 기운이 필요해 이 기운을 담은 한자 위주로 골랐어요.'
+                        ? (widget.isPureKorean
+                            ? '사주에 ${elementNames[saju.yongsin]} 기운이 필요해 초성의 발음오행이 맞는 이름 위주로 골랐어요.'
+                            : '사주에 ${elementNames[saju.yongsin]} 기운이 필요해 이 기운을 담은 한자 위주로 골랐어요.')
                         : '사주를 바탕으로 이름 후보를 점수화했어요.',
                     style: const TextStyle(
                         fontSize: 12, color: Colors.white70),
@@ -278,9 +287,18 @@ class _NameCard extends StatelessWidget {
                                 fontSize: 20,
                                 fontWeight: FontWeight.w800)),
                         const SizedBox(width: 8),
-                        Text(a.hanjaName,
-                            style: const TextStyle(
-                                fontSize: 14, color: AppTheme.sub)),
+                        if (a.isPureKorean)
+                          Flexible(
+                            child: Text(
+                                pureKoreanMeaning(a.givenName) ?? '',
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    fontSize: 13, color: AppTheme.sub)),
+                          )
+                        else
+                          Text(a.hanjaName,
+                              style: const TextStyle(
+                                  fontSize: 14, color: AppTheme.sub)),
                         if (a.rankBoy != null || a.rankGirl != null) ...[
                           const SizedBox(width: 6),
                           const GradeChip('흔한 이름', AppTheme.warn),

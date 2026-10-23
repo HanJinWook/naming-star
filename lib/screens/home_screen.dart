@@ -22,6 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime _birth = DateTime(2026, 10, 19);
   TimeOfDay? _birthTime;
   bool _timeUnknown = false;
+  bool _isPureKorean = false;
 
   Future<void> _chooseSurname() async {
     final pick = await showSurnamePicker(context, _surnamePick);
@@ -68,7 +69,8 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => RecommendScreen(baby: baby, saju: saju),
+        builder: (_) => RecommendScreen(
+            baby: baby, saju: saju, isPureKorean: _isPureKorean),
       ),
     );
   }
@@ -285,6 +287,45 @@ class _HomeScreenState extends State<HomeScreen> {
                         '사주 분석에 활용해요. 시간을 모르면 시주를 제외하고 분석합니다.',
                         style:
                             TextStyle(fontSize: 11, color: AppTheme.sub)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            // 이름 종류
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('이름 종류',
+                        style: TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 10),
+                    SegmentedButton<bool>(
+                      segments: const [
+                        ButtonSegment(
+                            value: false,
+                            label: Text('한자 이름'),
+                            icon: Icon(Icons.text_fields, size: 18)),
+                        ButtonSegment(
+                            value: true,
+                            label: Text('순우리말'),
+                            icon: Icon(Icons.grass_outlined, size: 18)),
+                      ],
+                      selected: {_isPureKorean},
+                      onSelectionChanged: (s) =>
+                          setState(() => _isPureKorean = s.first),
+                    ),
+                    if (_isPureKorean) ...[
+                      const SizedBox(height: 8),
+                      const Text(
+                        '순우리말 이름은 한자가 없어 한글 자모 획수로 수리를 계산하고, 초성의 발음오행으로 사주를 보완하는 간이 계산이에요.',
+                        style: TextStyle(
+                            fontSize: 11, color: AppTheme.sub),
+                      ),
+                    ],
                   ],
                 ),
               ),

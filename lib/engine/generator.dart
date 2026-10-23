@@ -1,5 +1,7 @@
 import '../data/hanja.dart';
+import '../data/pure_korean_names.dart';
 import '../models.dart';
+import 'pure_korean.dart';
 import 'scoring.dart';
 
 /// 성별별 이름 음절 풀 (첫자 × 끝자)
@@ -89,4 +91,31 @@ List<NameAnalysis> generateNames(
   final list = best.values.toList()
     ..sort((a, b) => b.total.compareTo(a.total));
   return list.take(limit).toList();
+}
+
+/// 순우리말 이름 후보 → 분석 → 상위 N개 반환
+/// 성별 성향이 반대인 이름은 제외하고, 공통 이름은 남녀 모두 포함해요.
+List<NameAnalysis> generatePureKoreanNames(
+  BabyInfo baby,
+  SajuResult saju, {
+  int limit = 60,
+}) {
+  final results = <NameAnalysis>[];
+  for (final n in pureKoreanNames) {
+    if (n.gender == PureNameGender.boy && baby.gender == Gender.girl) {
+      continue;
+    }
+    if (n.gender == PureNameGender.girl && baby.gender == Gender.boy) {
+      continue;
+    }
+    results.add(analyzePureKoreanName(
+      surname: baby.surname,
+      surnameStrokes: baby.surnameStrokes,
+      givenName: n.name,
+      saju: saju,
+      gender: baby.gender,
+    ));
+  }
+  results.sort((a, b) => b.total.compareTo(a.total));
+  return results.take(limit).toList();
 }
