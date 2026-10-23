@@ -42,7 +42,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
   Gender _gender = Gender.boy;
   DateTime _birth = DateTime(2026, 10, 19);
   TimeOfDay? _birthTime;
-  bool _timeUnknown = true;
+  bool _timeUnknown = false;
   bool _isPureKorean = false;
   // 음절별 선택된 한자 인덱스
   final Map<int, int> _hanjaIdx = {};
@@ -262,24 +262,44 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
                           TextStyle(fontSize: 11, color: AppTheme.sub),
                     ),
                   ],
-                  const SizedBox(height: 12),
-                  // 성별
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          // 성별
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('성별',
+                      style: TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 10),
                   Row(
                     children: [
-                      ChoiceChip(
-                        label: const Text('남아'),
-                        selected: _gender == Gender.boy,
-                        onSelected: (_) =>
-                            setState(() => _gender = Gender.boy),
-                        selectedColor: AppTheme.primarySoft,
+                      Expanded(
+                        child: GenderButton(
+                          label: '남아',
+                          icon: Icons.boy,
+                          color: AppTheme.boy,
+                          selected: _gender == Gender.boy,
+                          onTap: () =>
+                              setState(() => _gender = Gender.boy),
+                        ),
                       ),
-                      const SizedBox(width: 8),
-                      ChoiceChip(
-                        label: const Text('여아'),
-                        selected: _gender == Gender.girl,
-                        onSelected: (_) =>
-                            setState(() => _gender = Gender.girl),
-                        selectedColor: AppTheme.primarySoft,
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: GenderButton(
+                          label: '여아',
+                          icon: Icons.girl,
+                          color: AppTheme.girl,
+                          selected: _gender == Gender.girl,
+                          onTap: () =>
+                              setState(() => _gender = Gender.girl),
+                        ),
                       ),
                     ],
                   ),
@@ -348,18 +368,18 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
                 ),
               ),
             ),
-          // 생년월일 (사주 분석용)
+          // 생년월일시
           Card(
             child: Padding(
               padding: const EdgeInsets.all(18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('생년월일 (사주 분석용)',
+                  const Text('생년월일시',
                       style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.cake_outlined,
@@ -392,12 +412,16 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
                     controlAffinity:
                         ListTileControlAffinity.leading,
                     title: const Text(
-                        '태어난 시간을 몰라요 (시주 제외)',
+                        '태어난 시간을 몰라요',
                         style: TextStyle(fontSize: 13)),
                     value: _timeUnknown,
                     onChanged: (v) =>
-                        setState(() => _timeUnknown = v ?? true),
+                        setState(() => _timeUnknown = v ?? false),
                   ),
+                  const Text(
+                      '사주 분석에 활용해요. 시간을 모르면 시주를 제외하고 분석합니다.',
+                      style:
+                          TextStyle(fontSize: 11, color: AppTheme.sub)),
                 ],
               ),
             ),

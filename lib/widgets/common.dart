@@ -262,3 +262,49 @@ class ElementChip extends StatelessWidget {
     );
   }
 }
+
+/// 성별 선택 버튼 (이름 짓기·이름 분석 공용)
+class GenderButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+  const GenderButton({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: selected ? color.withValues(alpha: 0.14) : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected ? color : AppTheme.line,
+            width: selected ? 1.6 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: selected ? color : AppTheme.sub),
+            const SizedBox(width: 6),
+            Text(label,
+                style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: selected ? color : AppTheme.sub)),
+          ],
+        ),
+      ),
+    );
+  }
+}

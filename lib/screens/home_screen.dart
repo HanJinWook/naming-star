@@ -3,6 +3,7 @@ import '../engine/saju.dart';
 import '../models.dart';
 import '../services/ad_service.dart';
 import '../theme.dart';
+import '../widgets/common.dart';
 import '../widgets/surname_picker.dart';
 import 'recommend_screen.dart';
 
@@ -222,7 +223,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: _GenderButton(
+                          child: GenderButton(
                             label: '남아',
                             icon: Icons.boy,
                             color: AppTheme.boy,
@@ -233,7 +234,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: _GenderButton(
+                          child: GenderButton(
                             label: '여아',
                             icon: Icons.girl,
                             color: AppTheme.girl,
@@ -320,46 +321,3 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class _GenderButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Color color;
-  final bool selected;
-  final VoidCallback onTap;
-  const _GenderButton({
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: selected ? color.withValues(alpha: 0.14) : Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: selected ? color : AppTheme.line,
-            width: selected ? 1.6 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: selected ? color : AppTheme.sub),
-            const SizedBox(width: 6),
-            Text(label,
-                style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: selected ? color : AppTheme.sub)),
-          ],
-        ),
-      ),
-    );
-  }
-}
