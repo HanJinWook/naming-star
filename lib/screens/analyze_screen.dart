@@ -649,8 +649,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
             ),
           ),
           const SizedBox(height: 4),
-          // 성별 (궁합 모드에서는 불필요해서 숨김)
-          if (!_compatMode)
+          // 성별 (두 모드 공통 — 점수에는 쓰이지 않지만 폼 일관성을 위해 표시)
           Card(
             child: Padding(
               padding: const EdgeInsets.all(18),
