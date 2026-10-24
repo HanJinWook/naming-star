@@ -427,10 +427,12 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
                 20 +
                     MediaQuery.of(sheetCtx).viewInsets.bottom +
                     MediaQuery.of(sheetCtx).padding.bottom),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+            // 큰 글자·작은 화면에서도 시트가 화면 안에 들어오도록 스크롤
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                 Row(
                   children: [
                     Text(isEdit ? '구성원 편집' : '구성원 추가',
@@ -541,6 +543,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
                   ],
                 ),
               ],
+              ),
             ),
           );
         },
@@ -723,12 +726,13 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       const Text('분석할 이름',
                           style: TextStyle(
                               fontSize: 15, fontWeight: FontWeight.w700)),
-                      const Spacer(),
                       TextButton.icon(
                         onPressed: _loadFromFavorites,
                         icon: const Icon(Icons.bookmark_outline, size: 16),
@@ -755,34 +759,45 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
                         borderRadius:
                             BorderRadius.circular(14),
                       ),
-                      child: Row(
+                      child: Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          Text(
-                            _surnamePick.hanja.isEmpty
-                                ? _surnamePick.name
-                                : '${_surnamePick.name}(${_surnamePick.hanja})',
-                            style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w800,
-                                color: AppTheme.primary),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _surnamePick.hanja.isEmpty
+                                    ? _surnamePick.name
+                                    : '${_surnamePick.name}(${_surnamePick.hanja})',
+                                style: const TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppTheme.primary),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${_surnamePick.strokes}획',
+                                style: const TextStyle(
+                                    fontSize: 13,
+                                    color: AppTheme.sub,
+                                    fontWeight: FontWeight.w600),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${_surnamePick.strokes}획',
-                            style: const TextStyle(
-                                fontSize: 13,
-                                color: AppTheme.sub,
-                                fontWeight: FontWeight.w600),
+                          const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('성씨 변경',
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      color: AppTheme.primary,
+                                      fontWeight: FontWeight.w600)),
+                              Icon(Icons.chevron_right,
+                                  size: 18,
+                                  color: AppTheme.primary),
+                            ],
                           ),
-                          const Spacer(),
-                          const Text('성씨 변경',
-                              style: TextStyle(
-                                  fontSize: 13,
-                                  color: AppTheme.primary,
-                                  fontWeight: FontWeight.w600)),
-                          const Icon(Icons.chevron_right,
-                              size: 18,
-                              color: AppTheme.primary),
                         ],
                       ),
                     ),
