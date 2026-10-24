@@ -274,27 +274,6 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
 
   // ── 가족 궁합 ──
 
-  Future<void> _pickDateValue(
-      DateTime initial, ValueChanged<DateTime> apply) async {
-    final d = await showDatePicker(
-      context: context,
-      initialDate: initial,
-      firstDate: DateTime(1900, 1, 1),
-      lastDate: DateTime(2035),
-      locale: const Locale('ko'),
-    );
-    if (d != null) setState(() => apply(d));
-  }
-
-  Future<void> _pickTimeValue(
-      TimeOfDay? current, ValueChanged<TimeOfDay> apply) async {
-    final t = await showTimePicker(
-      context: context,
-      initialTime: current ?? const TimeOfDay(hour: 12, minute: 0),
-    );
-    if (t != null) setState(() => apply(t));
-  }
-
   /// 이름 2자 + 한자 선택을 검증하고 picks를 만들어요. 실패하면 null.
   List<HanjaPick>? _buildPicks() {
     final syls = _syllables;
@@ -379,106 +358,310 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
     return n == 0 ? base : '$base ${n + 1}';
   }
 
-  void _addMember() {
-    if (_members.length >= _maxMembers) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('구성원은 최대 6명까지 추가할 수 있어요.')),
-      );
-      return;
+  /// 구성원 추가/편집 바텀시트. index가 null이면 신규 추가.
+  Future<void> _showMemberSheet({int? index}) async {
+    final editIndex = index;
+    final isEdit = editIndex != null;
+    String baseRole;
+    DateTime birth;
+    TimeOfDay? time;
+    bool timeUnknown;
+    if (editIndex != null) {
+      final orig = _members[editIndex];
+      baseRole = orig.role.split(' ').first;
+      birth = orig.birth;
+      time = orig.time;
+      timeUnknown = orig.timeUnknown;
+    } else {
+      final used = _members.map((m) => m.role.split(' ').first).toSet();
+      baseRole = _roleOptions.firstWhere((r) => !used.contains(r),
+          orElse: () => '동생');
+      final isElder = ['아빠', '엄마', '할아버지', '할머니'].contains(baseRole);
+      final isGrand = ['할아버지', '할머니'].contains(baseRole);
+      birth = isGrand
+          ? DateTime(1955, 1, 1)
+          : isElder
+              ? DateTime(1990, 5, 5)
+              : DateTime(2021, 3, 5);
+      time = null;
+      timeUnknown = true;
     }
-    final used = _members.map((m) => m.role.split(' ').first).toSet();
-    final base = _roleOptions.firstWhere((r) => !used.contains(r),
-        orElse: () => '동생');
-    final isElder = ['아빠', '엄마', '할아버지', '할머니'].contains(base);
-    final isGrand = ['할아버지', '할머니'].contains(base);
-    setState(() {
-      _members.add(_MemberInput(
-        _uniqueLabel(base, -1),
-        isGrand
-            ? DateTime(1955, 1, 1)
-            : isElder
-                ? DateTime(1990, 5, 5)
-                : DateTime(2021, 3, 5),
-      ));
-    });
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (sheetCtx, setSheetState) {
+          Future<void> pickDate() async {
+            final d = await showDatePicker(
+              context: sheetCtx,
+              initialDate: birth,
+              firstDate: DateTime(1900, 1, 1),
+              lastDate: DateTime(2035),
+              locale: const Locale('ko'),
+            );
+            if (d != null) setSheetState(() => birth = d);
+          }
+
+          Future<void> pickTime() async {
+            final t = await showTimePicker(
+              context: sheetCtx,
+              initialTime: time ?? const TimeOfDay(hour: 12, minute: 0),
+            );
+            if (t != null) {
+              setSheetState(() {
+                time = t;
+                timeUnknown = false;
+              });
+            }
+          }
+
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+                20,
+                20,
+                20,
+                20 +
+                    MediaQuery.of(sheetCtx).viewInsets.bottom +
+                    MediaQuery.of(sheetCtx).padding.bottom),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(isEdit ? '구성원 편집' : '구성원 추가',
+                        style: const TextStyle(
+                            fontSize: 17, fontWeight: FontWeight.w800)),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: () => Navigator.pop(sheetCtx),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Text('역할',
+                    style: TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final r in _roleOptions)
+                      ChoiceChip(
+                        label: Text(r,
+                            style: const TextStyle(fontSize: 13)),
+                        selected: baseRole == r,
+                        onSelected: (_) =>
+                            setSheetState(() => baseRole = r),
+                        selectedColor: AppTheme.primarySoft,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.cake_outlined,
+                      color: AppTheme.primary),
+                  title: Text(
+                      '${birth.year}년 ${birth.month}월 ${birth.day}일',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w600)),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: pickDate,
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.schedule,
+                      color: AppTheme.primary),
+                  title: Text(
+                      '태어난 시간 · ${timeUnknown ? '모름' : (time == null ? '선택 안 함' : '${time!.hour}시 ${time!.minute}분')}',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w600)),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: pickTime,
+                ),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  title: const Text('태어난 시간을 몰라요',
+                      style: TextStyle(fontSize: 13)),
+                  value: timeUnknown,
+                  onChanged: (v) =>
+                      setSheetState(() => timeUnknown = v ?? false),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    if (editIndex != null && _members.length > 1)
+                      TextButton.icon(
+                        onPressed: () {
+                          setState(() => _members.removeAt(editIndex));
+                          Navigator.pop(sheetCtx);
+                        },
+                        icon: const Icon(Icons.delete_outline, size: 18),
+                        label: const Text('삭제'),
+                        style: TextButton.styleFrom(
+                            foregroundColor: Colors.red),
+                      ),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () => Navigator.pop(sheetCtx),
+                      child: const Text('취소'),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () {
+                        final label = _uniqueLabel(
+                            baseRole, editIndex ?? -1);
+                        setState(() {
+                          if (editIndex != null) {
+                            final orig = _members[editIndex];
+                            orig.role = label;
+                            orig.birth = birth;
+                            orig.time = time;
+                            orig.timeUnknown = timeUnknown;
+                          } else {
+                            _members.add(_MemberInput(label, birth)
+                              ..time = time
+                              ..timeUnknown = timeUnknown);
+                          }
+                        });
+                        Navigator.pop(sheetCtx);
+                      },
+                      child: Text(isEdit ? '저장' : '추가'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 
-  /// 가족 구성원 입력 카드 (궁합 모드) — 역할 선택 + 생년월일
-  Widget _memberCard(int index) {
-    final m = _members[index];
-    final baseRole = m.role.split(' ').first;
+  /// 섹션 헤더 (아기 정보 / 가족 구성 구분용)
+  Widget _sectionHeader(IconData icon, String title, {String? badge}) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 10, bottom: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 19, color: AppTheme.primary),
+          const SizedBox(width: 6),
+          Text(title,
+              style: const TextStyle(
+                  fontSize: 16, fontWeight: FontWeight.w800)),
+          if (badge != null) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppTheme.primarySoft,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(badge,
+                  style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.primary)),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// 가족 구성 요약 카드 — 행을 눌러 편집 시트로, ×로 삭제
+  Widget _familyMembersCard() {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Text(m.role,
-                    style: const TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.w700)),
-                const Spacer(),
-                if (_members.length > 1)
-                  IconButton(
-                    onPressed: () =>
-                        setState(() => _members.removeAt(index)),
-                    icon: const Icon(Icons.remove_circle_outline,
-                        size: 20, color: AppTheme.sub),
-                    tooltip: '구성원 삭제',
-                    visualDensity: VisualDensity.compact,
-                  ),
-              ],
-            ),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                for (final r in _roleOptions)
-                  ChoiceChip(
-                    label: Text(r, style: const TextStyle(fontSize: 12)),
-                    selected: baseRole == r,
-                    onSelected: (_) => setState(
-                        () => m.role = _uniqueLabel(r, index)),
-                    selectedColor: AppTheme.primarySoft,
-                    visualDensity: VisualDensity.compact,
-                  ),
-              ],
-            ),
+            const Text('행을 눌러 수정하고, ×를 눌러 삭제할 수 있어요.',
+                style: TextStyle(fontSize: 11, color: AppTheme.sub)),
             const SizedBox(height: 8),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading:
-                  const Icon(Icons.cake_outlined, color: AppTheme.primary),
-              title: Text(
-                  '${m.birth.year}년 ${m.birth.month}월 ${m.birth.day}일',
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () =>
-                  _pickDateValue(m.birth, (d) => m.birth = d),
-            ),
-            const Divider(height: 1),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading:
-                  const Icon(Icons.schedule, color: AppTheme.primary),
-              title: Text(
-                  '태어난 시간 · ${m.timeUnknown ? '모름' : (m.time == null ? '선택 안 함' : '${m.time!.hour}시 ${m.time!.minute}분')}',
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => _pickTimeValue(m.time, (t) {
-                m.time = t;
-                m.timeUnknown = false;
-              }),
-            ),
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              controlAffinity: ListTileControlAffinity.leading,
-              title: const Text('태어난 시간을 몰라요',
-                  style: TextStyle(fontSize: 13)),
-              value: m.timeUnknown,
-              onChanged: (v) =>
-                  setState(() => m.timeUnknown = v ?? false),
+            for (var i = 0; i < _members.length; i++) ...[
+              InkWell(
+                onTap: () => _showMemberSheet(index: i),
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        alignment: Alignment.center,
+                        decoration: const BoxDecoration(
+                          color: AppTheme.primarySoft,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          zodiacEmojis[sajuOfBirth(
+                                      _members[i].birth, null)
+                                  .year
+                                  .branch] ??
+                              '⭐',
+                          style: const TextStyle(fontSize: 19),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(_members[i].role,
+                                style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700)),
+                            Text(
+                              '${_members[i].birth.year}년 ${_members[i].birth.month}월 ${_members[i].birth.day}일 · ${_members[i].timeUnknown ? '시간 모름' : (_members[i].time == null ? '시간 미선택' : '${_members[i].time!.hour}시 ${_members[i].time!.minute}분')}',
+                              style: const TextStyle(
+                                  fontSize: 12, color: AppTheme.sub),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (_members.length > 1)
+                        IconButton(
+                          onPressed: () =>
+                              setState(() => _members.removeAt(i)),
+                          icon: const Icon(Icons.close,
+                              size: 18, color: AppTheme.sub),
+                          tooltip: '구성원 삭제',
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      const Icon(Icons.chevron_right,
+                          size: 18, color: AppTheme.sub),
+                    ],
+                  ),
+                ),
+              ),
+              if (i < _members.length - 1) const Divider(height: 1),
+            ],
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _members.length >= _maxMembers
+                    ? null
+                    : () => _showMemberSheet(),
+                icon: const Icon(Icons.person_add_outlined, size: 18),
+                label: Text(_members.length >= _maxMembers
+                    ? '최대 6명까지 추가했어요'
+                    : '구성원 추가'),
+              ),
             ),
           ],
         ),
@@ -532,6 +715,8 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
             ),
           ),
           const SizedBox(height: 4),
+          if (_compatMode)
+            _sectionHeader(Icons.child_care_outlined, '아기 정보'),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(18),
@@ -808,17 +993,11 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
               ),
             ),
           ),
-          // 가족 구성원 (궁합 모드)
+          // 가족 구성 (궁합 모드) — 요약 카드 + 바텀시트 편집
           if (_compatMode) ...[
-            for (var i = 0; i < _members.length; i++) ...[
-              _memberCard(i),
-              const SizedBox(height: 4),
-            ],
-            OutlinedButton.icon(
-              onPressed: _addMember,
-              icon: const Icon(Icons.person_add_outlined, size: 18),
-              label: const Text('가족 구성원 추가 (최대 6명)'),
-            ),
+            _sectionHeader(Icons.family_restroom_outlined, '가족 구성',
+                badge: '${_members.length}명'),
+            _familyMembersCard(),
             const SizedBox(height: 4),
           ],
           const SizedBox(height: 12),
