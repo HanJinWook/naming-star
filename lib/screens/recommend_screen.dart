@@ -296,9 +296,12 @@ class _NameCard extends StatelessWidget {
                                     fontSize: 13, color: AppTheme.sub)),
                           )
                         else
-                          Text(a.hanjaName,
-                              style: const TextStyle(
-                                  fontSize: 14, color: AppTheme.sub)),
+                          Flexible(
+                            child: Text(a.hanjaName,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    fontSize: 14, color: AppTheme.sub)),
+                          ),
                         if (a.rankBoy != null || a.rankGirl != null) ...[
                           const SizedBox(width: 6),
                           const GradeChip('흔한 이름', AppTheme.warn),
@@ -306,29 +309,27 @@ class _NameCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 6),
-                    Row(
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 4,
                       children: a.dimensions.map((d) {
-                        return Padding(
-                          padding:
-                              const EdgeInsets.only(right: 10),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: AppTheme.scoreColor(d.score),
-                                ),
+                        return Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: AppTheme.scoreColor(d.score),
                               ),
-                              const SizedBox(width: 4),
-                              Text(d.title,
-                                  style: const TextStyle(
-                                      fontSize: 11,
-                                      color: AppTheme.sub)),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(d.title,
+                                style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppTheme.sub)),
+                          ],
                         );
                       }).toList(),
                     ),

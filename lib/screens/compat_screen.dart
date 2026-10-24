@@ -487,6 +487,11 @@ class _BabyNode extends StatelessWidget {
               child: Image.asset(
                 'assets/icon/splash-star.png',
                 fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.star_rounded,
+                  size: 30,
+                  color: AppTheme.gold,
+                ),
               ),
             ),
           ),

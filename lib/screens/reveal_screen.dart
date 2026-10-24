@@ -126,6 +126,11 @@ class _RevealScreenState extends State<RevealScreen>
                                 'assets/icon/splash-star.png',
                                 width: 190,
                                 height: 190,
+                                errorBuilder: (_, __, ___) => const Icon(
+                                  Icons.star_rounded,
+                                  size: 150,
+                                  color: AppTheme.gold,
+                                ),
                               ),
                             ),
                           ),
